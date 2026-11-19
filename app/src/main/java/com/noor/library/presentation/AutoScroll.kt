@@ -1,5 +1,6 @@
 package com.noor.library.presentation
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth

@@ -11,3 +11,5 @@ app/src/main/assets/content/
 app/src/main/res/font/
 content/cache/
 qc-report/
+__pycache__/
+*.pyc

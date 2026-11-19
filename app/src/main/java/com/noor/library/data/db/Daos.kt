@@ -32,15 +32,25 @@ interface ContentDao {
 
     @Query(
         "SELECT * FROM passages WHERE (:bookId = '' OR bookId = :bookId) AND " +
-            "(persianNorm LIKE '%' || :q || '%' OR arabicNorm LIKE '%' || :q || '%') LIMIT 300"
+            "(persianNorm LIKE '%' || :q || '%' OR arabicNorm LIKE '%' || :q || '%' OR arabicNorm LIKE '%' || :qCompact || '%') LIMIT 300"
     )
-    suspend fun searchNormalized(q: String, bookId: String): List<PassageEntity>
+    suspend fun searchNormalized(q: String, qCompact: String, bookId: String): List<PassageEntity>
 
     @Query(
         "SELECT * FROM passages WHERE (:bookId = '' OR bookId = :bookId) AND " +
-            "(persianNorm LIKE '%' || :qNorm || '%' OR arabicText LIKE '%' || :qRaw || '%') LIMIT 300"
+            "(persianNorm LIKE '%' || :qNorm || '%' OR arabicText LIKE '%' || :qRaw || '%' OR arabicNorm LIKE '%' || :qCompact || '%') LIMIT 300"
     )
-    suspend fun searchExactArabic(qNorm: String, qRaw: String, bookId: String): List<PassageEntity>
+    suspend fun searchExactArabic(qNorm: String, qRaw: String, qCompact: String, bookId: String): List<PassageEntity>
+
+    /** PDF books: passageNumber is the PDF page number. Prefer the row that actually carries text. */
+    @Query("SELECT * FROM passages WHERE bookId = :bookId AND passageNumber = :page ORDER BY length(arabicText) DESC LIMIT 1")
+    suspend fun passageByPage(bookId: String, page: Int): PassageEntity?
+
+    @Query("SELECT MIN(passageNumber) FROM passages WHERE bookId = :bookId AND sectionType = :type AND sectionNumber = :number")
+    suspend fun firstPassageNumber(bookId: String, type: String, number: Int): Int?
+
+    @Query("SELECT MAX(passageNumber) FROM passages WHERE bookId = :bookId")
+    suspend fun maxPassageNumber(bookId: String): Int?
 
     @Query(
         "SELECT p.* FROM passages p JOIN sections s ON s.id = p.sectionId " +
@@ -99,6 +109,12 @@ interface UserDao {
 
     @Query("SELECT COUNT(*) FROM bookmarks")
     fun bookmarkCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM bookmarks WHERE bookId = :bookId AND passageNumber = :page")
+    fun pageBookmarkCount(bookId: String, page: Int): Flow<Int>
+
+    @Query("SELECT content FROM notes WHERE bookId = :bookId AND passageNumber = :page LIMIT 1")
+    fun pageNote(bookId: String, page: Int): Flow<String?>
 
     @Query("SELECT DISTINCT folder FROM bookmarks ORDER BY folder")
     fun folders(): Flow<List<String>>

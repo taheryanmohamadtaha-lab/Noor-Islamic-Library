@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -124,6 +126,12 @@ fun ReaderScreen(
         }
     }
 
+    // ---- auto-scroll (teleprompter)
+    var showScroll by remember { mutableStateOf(false) }
+    var scrolling by remember { mutableStateOf(false) }
+    var liveSpeed by remember { mutableFloatStateOf(settings.autoScrollSpeed) }
+    AutoScrollEffect(listState, scrolling && showScroll, liveSpeed) { scrolling = false }
+
     // ---- Quran audio (EveryAyah streaming + cache)
     val isQuran = bookId == "quran"
     val audio = remember { AudioController(context.applicationContext) }
@@ -163,12 +171,25 @@ fun ReaderScreen(
                 title = { Text(sectionDisplayTitle(bookId, type, number, sectionTitle), fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت") } },
                 actions = {
+                    IconButton(onClick = { showScroll = !showScroll; if (!showScroll) scrolling = false }) {
+                        Icon(Icons.Filled.KeyboardDoubleArrowUp, "پیمایش خودکار")
+                    }
                     if (isQuran) IconButton(onClick = { showAudio = !showAudio }) { Icon(Icons.Filled.Headphones, "تلاوت") }
                     IconButton(onClick = { showSheet = true }) { Icon(Icons.Filled.Tune, "تنظیمات مطالعه") }
                 }
             )
         },
         bottomBar = {
+          Column {
+            if (showScroll) {
+                AutoScrollBar(
+                    running = scrolling, speed = liveSpeed,
+                    onToggle = { scrolling = !scrolling },
+                    onSpeedChange = { liveSpeed = it },
+                    onSpeedCommit = { appVm.update { p -> p.setAutoScrollSpeed(liveSpeed) } },
+                    onClose = { scrolling = false; showScroll = false }
+                )
+            }
             if (isQuran && showAudio) {
                 AudioBar(
                     state = audioState,
@@ -202,6 +223,7 @@ fun ReaderScreen(
                     onClose = { audio.stop(); showAudio = false }
                 )
             }
+          }
         }
     ) { pad ->
         val list = passages

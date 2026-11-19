@@ -17,7 +17,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AutoStories
+import android.app.Activity
+import android.content.Intent
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.noor.library.audio.PlaybackService
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.HistoryEdu
 import androidx.compose.material.icons.filled.MenuBook
@@ -82,6 +92,23 @@ fun HomeScreen(
     val dailyTitle by vm.dailyTitle.collectAsState()
     LaunchedEffect(books) { vm.loadDaily() }
 
+    val context = LocalContext.current
+    var showExit by remember { mutableStateOf(false) }
+    if (showExit) {
+        AlertDialog(
+            onDismissRequest = { showExit = false },
+            title = { Text("خروج از برنامه") },
+            text = { Text("می‌خواهید از کتابخانه نور خارج شوید؟ پخش صوت نیز متوقف می‌شود.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    context.stopService(Intent(context, PlaybackService::class.java))
+                    (context as? Activity)?.finishAffinity()
+                }) { Text("خروج") }
+            },
+            dismissButton = { TextButton(onClick = { showExit = false }) { Text("ماندن") } }
+        )
+    }
+
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)) {
         // Header
         item {
@@ -98,7 +125,10 @@ fun HomeScreen(
                             Text("کتابخانه نور", color = Gold, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                             Text("NOOR ISLAMIC LIBRARY", color = Color(0xFFCFE3DA), fontSize = 12.sp, letterSpacing = 2.sp)
                         }
-                        IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "تنظیمات", tint = Gold) }
+                        Row {
+                            IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, "تنظیمات", tint = Gold) }
+                            IconButton(onClick = { showExit = true }) { Icon(Icons.AutoMirrored.Filled.ExitToApp, "خروج", tint = Gold) }
+                        }
                     }
                     Spacer(Modifier.height(16.dp))
                     Row(

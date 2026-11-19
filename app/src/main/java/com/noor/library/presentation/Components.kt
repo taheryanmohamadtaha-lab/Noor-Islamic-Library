@@ -70,6 +70,7 @@ fun NumberBadge(number: Int, modifier: Modifier = Modifier) {
 fun StatusChip(status: String) {
     val (text, color) = when (status) {
         "complete" -> "کامل" to Color(0xFF3E9B6E)
+        "selection" -> "منتخب" to Color(0xFF4F9FC0)
         "partial" -> "ناقص" to Gold
         else -> "محتوا افزوده نشده" to Color(0xFFC0583F)
     }

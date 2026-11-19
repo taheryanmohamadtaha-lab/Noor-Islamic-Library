@@ -23,13 +23,19 @@ class Repository(private val db: AppDatabase, val prefs: Prefs) {
     suspend fun nextSection(bookId: String, type: String, number: Int) = content.nextSection(bookId, type, number)
     suspend fun previousSection(bookId: String, type: String, number: Int) = content.previousSection(bookId, type, number)
     suspend fun sectionTitle(bookId: String, type: String, number: Int) = content.sectionTitle(bookId, type, number)
+    suspend fun passageByPage(bookId: String, page: Int) = content.passageByPage(bookId, page)
+    suspend fun firstPassageNumber(bookId: String, type: String, number: Int) = content.firstPassageNumber(bookId, type, number)
+    suspend fun maxPage(bookId: String) = content.maxPassageNumber(bookId)
+    fun pageBookmarked(bookId: String, page: Int) = user.pageBookmarkCount(bookId, page)
+    fun pageNote(bookId: String, page: Int) = user.pageNote(bookId, page)
 
     // ---- search
     suspend fun search(query: String, bookId: String, ignoreHarakat: Boolean): List<PassageEntity> {
         val q = TextNormalizer.normalize(query)
         if (q.length < 2) return emptyList()
-        val byText = if (ignoreHarakat) content.searchNormalized(q, bookId)
-        else content.searchExactArabic(q, query.trim(), bookId)
+        val qc = q.replace(" ", "")
+        val byText = if (ignoreHarakat) content.searchNormalized(q, qc, bookId)
+        else content.searchExactArabic(q, query.trim(), qc, bookId)
         val byTitle = content.searchSectionTitles(query.trim(), bookId)
         return (byTitle + byText).distinctBy { it.id }
     }

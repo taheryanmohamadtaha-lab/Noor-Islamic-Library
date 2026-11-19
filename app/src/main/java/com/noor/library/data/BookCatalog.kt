@@ -1,12 +1,18 @@
 package com.noor.library.data
 
 /** Static book metadata (titles only — no scripture text lives in code). */
-data class BookInfo(val id: String, val title: String, val subtitle: String, val sectionNoun: String, val passageNoun: String)
+data class BookInfo(
+    val id: String, val title: String, val subtitle: String, val sectionNoun: String, val passageNoun: String,
+    /** Books shown as the original PDF pages (asset path) instead of re-typeset text. */
+    val pdfAsset: String? = null,
+) {
+    val isPdf: Boolean get() = pdfAsset != null
+}
 
 object BookCatalog {
     val all = listOf(
         BookInfo("quran", "قرآن کریم", "۱۱۴ سوره", "سوره", "آیه"),
-        BookInfo("mafatih", "مفاتیح الجنان", "دعاها و زیارات", "بخش", "فراز"),
+        BookInfo("mafatih", "مفاتیح الجنان", "منتخب · نمایش صفحات اصلی کتاب", "بخش", "صفحه", pdfAsset = "content/mafatih.pdf"),
         BookInfo("sahifa", "صحیفه سجادیه", "۵۴ دعا", "دعا", "فراز"),
         BookInfo("nahj", "نهج‌البلاغه", "خطبه‌ها، نامه‌ها و حکمت‌ها", "بخش", "فراز"),
     )

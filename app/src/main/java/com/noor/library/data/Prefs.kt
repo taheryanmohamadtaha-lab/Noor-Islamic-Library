@@ -30,6 +30,7 @@ data class Settings(
     val reminderEnabled: Boolean = false,
     val reminderHour: Int = 20,
     val reciter: String = "Alafasy_128kbps",
+    val autoScrollSpeed: Float = 40f,   // dp per second
 )
 
 data class LastPosition(val bookId: String, val sectionType: String, val sectionNumber: Int, val passage: Int)
@@ -52,6 +53,7 @@ class Prefs(private val context: Context) {
         val reminderEnabled = booleanPreferencesKey("reminder_enabled")
         val reminderHour = intPreferencesKey("reminder_hour")
         val reciter = stringPreferencesKey("reciter")
+        val autoScrollSpeed = floatPreferencesKey("auto_scroll_speed")
         val contentVersion = stringPreferencesKey("content_version")
         val lastBook = stringPreferencesKey("last_book")
         val lastType = stringPreferencesKey("last_type")
@@ -76,6 +78,7 @@ class Prefs(private val context: Context) {
             reminderEnabled = p[K.reminderEnabled] ?: d.reminderEnabled,
             reminderHour = p[K.reminderHour] ?: d.reminderHour,
             reciter = p[K.reciter] ?: d.reciter,
+            autoScrollSpeed = p[K.autoScrollSpeed] ?: d.autoScrollSpeed,
         )
     }
 
@@ -97,6 +100,7 @@ class Prefs(private val context: Context) {
     suspend fun setIgnoreHarakat(v: Boolean) { ds.edit { it[K.ignoreHarakat] = v } }
     suspend fun setDailyGoal(v: Int) { ds.edit { it[K.dailyGoal] = v } }
     suspend fun setReciter(v: String) { ds.edit { it[K.reciter] = v } }
+    suspend fun setAutoScrollSpeed(v: Float) { ds.edit { it[K.autoScrollSpeed] = v } }
     suspend fun setReminder(enabled: Boolean, hour: Int) {
         ds.edit { it[K.reminderEnabled] = enabled; it[K.reminderHour] = hour }
     }

@@ -90,7 +90,8 @@ class ContentImporter(private val context: Context, private val db: AppDatabase,
                             sectionId = sectionId, bookId = bookId, sectionType = type,
                             sectionNumber = number, passageNumber = p.getInt("n"),
                             arabicText = ar, persianTranslation = fa,
-                            arabicNorm = TextNormalizer.normalize(ar),
+                            // PDF text layers split words unpredictably, so their search index ignores spaces
+                            arabicNorm = TextNormalizer.normalize(ar).let { if (BookCatalog.byId(bookId).isPdf) it.replace(" ", "") else it },
                             persianNorm = TextNormalizer.normalize(fa),
                             sourceReference = p.optString("ref")
                         )

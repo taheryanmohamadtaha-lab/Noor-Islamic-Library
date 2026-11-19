@@ -247,6 +247,8 @@ def import_user_book(book_id):
         if not str(data.get(key, "")).strip():
             problems.append(f"metadata field '{key}' is empty — text without attribution is refused")
     sections = data.get("sections", [])
+    if data.get("mode") == "pdf":
+        return import_pdf_book(book_id, data, sections, problems)
     counts, empty_ar, empty_fa = {}, 0, 0
     for s in sections:
         counts[s["type"]] = counts.get(s["type"], 0) + 1
@@ -282,6 +284,44 @@ def import_user_book(book_id):
     }
 
 
+def import_pdf_book(book_id, data, sections, problems):
+    """Book shown as the original PDF pages (text layer used only for TOC/search). See scripts/extract_mafatih.py."""
+    import shutil
+    pdf_src = os.path.join(SOURCES, f"{book_id}.pdf")
+    if not os.path.exists(pdf_src):
+        problems.append("PDF file content/sources/%s.pdf is missing" % book_id)
+    pages_expected = int(data.get("pdfPages", 0))
+    covered = {p["n"] for s in sections for p in s["passages"] if p.get("ar")}
+    nums = [p["n"] for s in sections for p in s["passages"]]
+    if not sections:
+        problems.append("no table-of-contents sections")
+    if nums and (min(nums) < 1 or max(nums) > pages_expected):
+        problems.append("page numbers outside the PDF range")
+    if pages_expected and len(covered) < pages_expected - 10:
+        problems.append(f"only {len(covered)} of {pages_expected} pages have searchable text")
+    if any(not str(data.get(k, "")).strip() for k in ("source", "license", "version", "translator")):
+        report["books"][book_id] = {"status": "missing", "problems": ["missing attribution metadata"]}
+        report["errors"].append(f"{book_id} refused")
+        return None
+    if problems:
+        status = "partial"
+    else:
+        status = data.get("status") or ("complete" if data.get("complete") else "partial")
+    if not problems and os.path.exists(pdf_src):
+        os.makedirs(ASSETS, exist_ok=True)
+        shutil.copyfile(pdf_src, os.path.join(ASSETS, f"{book_id}.pdf"))
+    report["books"][book_id] = {
+        "status": status, "mode": "pdf", "edition": data.get("edition", ""), "pdfPages": pages_expected,
+        "sectionCounts": {"toc_entries": len(sections)}, "passages": len(nums),
+        "problems": problems, "source": data["source"], "translator": data["translator"],
+    }
+    log(f"{book_id}: {status} (pdf mode, {len(sections)} TOC entries, {len(covered)}/{pages_expected} pages with text)")
+    return {
+        "status": status, "mode": "pdf", "source": data["source"], "translator": data["translator"],
+        "license": data["license"], "version": data["version"], "sections": sections,
+    }
+
+
 def write_json(name, obj):
     os.makedirs(ASSETS, exist_ok=True)
     with open(os.path.join(ASSETS, name), "w", encoding="utf-8") as f:
@@ -311,7 +351,7 @@ def main():
 
     # ---- report
     lines = ["# گزارش کنترل کیفیت محتوا", "", f"زمان تولید: {report['generatedAt']}", f"نسخه محتوا: `{manifest['contentVersion']}`", ""]
-    fa_status = {"complete": "کامل ✅", "partial": "ناقص ⚠️", "missing": "موجود نیست ❌"}
+    fa_status = {"complete": "کامل ✅", "selection": "منتخب ℹ️", "partial": "ناقص ⚠️", "missing": "موجود نیست ❌"}
     lines += ["| کتاب | وضعیت | جزئیات |", "|---|---|---|"]
     names = {"quran": "قرآن کریم", "mafatih": "مفاتیح الجنان", "sahifa": "صحیفه سجادیه", "nahj": "نهج‌البلاغه"}
     for b in ("quran", "mafatih", "sahifa", "nahj"):

@@ -64,7 +64,9 @@ fun BookScreen(repo: Repository, bookId: String, onBack: () -> Unit, onOpenSecti
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         StatusChip(b.status)
                         Text(
-                            if (b.status == "missing")
+                            if (b.status == "selection")
+                                "این کتاب «منتخب مفاتیح الجنان» (چاپ برهان) است، نه نسخه کامل. صفحات دقیقاً به‌شکل کتاب نمایش داده می‌شوند تا اعراب و متن دست‌نخورده بماند."
+                            else if (b.status == "missing")
                                 "متن معتبر این کتاب هنوز به برنامه افزوده نشده است. به‌جای نمایش متن ساختگی، این بخش خالی نگه داشته شده است. جزئیات در «تنظیمات › منابع و صحت متون» آمده است."
                             else
                                 "این کتاب به‌صورت ناقص در دسترس است؛ فقط بخش‌های تأییدشده نمایش داده می‌شوند.",

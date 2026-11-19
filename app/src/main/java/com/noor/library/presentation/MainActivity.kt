@@ -25,6 +25,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.noor.library.NoorApplication
+import com.noor.library.data.BookCatalog
+import kotlinx.coroutines.launch
 import com.noor.library.presentation.theme.NoorTheme
 
 class MainActivity : ComponentActivity() {
@@ -75,13 +77,19 @@ fun NoorRoot(appVm: AppViewModel) {
 fun NoorNav(appVm: AppViewModel, settings: com.noor.library.data.Settings) {
     val nav = rememberNavController()
     val repo = appVm.repo
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // Books shown as PDF pages open the page viewer; the others open the text reader.
+    fun openPassage(b: String, t: String, n: Int, p: Int) {
+        if (BookCatalog.byId(b).isPdf) nav.navigate("pdf/$b/$p") else nav.navigate("reader/$b/$t/$n?passage=$p")
+    }
 
     NavHost(navController = nav, startDestination = "home") {
         composable("home") {
             HomeScreen(
                 repo = repo, settings = settings,
                 onOpenBook = { nav.navigate("book/$it") },
-                onOpenReader = { b, t, n, p -> nav.navigate("reader/$b/$t/$n?passage=$p") },
+                onOpenReader = { b, t, n, p -> openPassage(b, t, n, p) },
                 onSearch = { nav.navigate("search") },
                 onLibrary = { nav.navigate("library") },
                 onSettings = { nav.navigate("settings") },
@@ -92,7 +100,14 @@ fun NoorNav(appVm: AppViewModel, settings: com.noor.library.data.Settings) {
             BookScreen(
                 repo = repo, bookId = bookId,
                 onBack = { nav.popBackStack() },
-                onOpenSection = { t, n -> nav.navigate("reader/$bookId/$t/$n?passage=1") }
+                onOpenSection = { t, n ->
+                    if (BookCatalog.byId(bookId).isPdf) {
+                        scope.launch {
+                            val page = repo.firstPassageNumber(bookId, t, n) ?: 1
+                            nav.navigate("pdf/$bookId/$page")
+                        }
+                    } else nav.navigate("reader/$bookId/$t/$n?passage=1")
+                }
             )
         }
         composable(
@@ -117,18 +132,33 @@ fun NoorNav(appVm: AppViewModel, settings: com.noor.library.data.Settings) {
                 }
             )
         }
+        composable(
+            "pdf/{bookId}/{page}",
+            arguments = listOf(
+                navArgument("bookId") { type = NavType.StringType },
+                navArgument("page") { type = NavType.IntType },
+            )
+        ) {
+            val a = it.arguments!!
+            PdfReaderScreen(
+                appVm = appVm, settings = settings,
+                bookId = a.getString("bookId") ?: "mafatih",
+                initialPage = a.getInt("page"),
+                onBack = { nav.popBackStack() }
+            )
+        }
         composable("search") {
             SearchScreen(
                 repo = repo, settings = settings,
                 onBack = { nav.popBackStack() },
-                onOpenReader = { b, t, n, p -> nav.navigate("reader/$b/$t/$n?passage=$p") }
+                onOpenReader = { b, t, n, p -> openPassage(b, t, n, p) }
             )
         }
         composable("library") {
             LibraryScreen(
                 repo = repo,
                 onBack = { nav.popBackStack() },
-                onOpenReader = { b, t, n, p -> nav.navigate("reader/$b/$t/$n?passage=$p") }
+                onOpenReader = { b, t, n, p -> openPassage(b, t, n, p) }
             )
         }
         composable("settings") {

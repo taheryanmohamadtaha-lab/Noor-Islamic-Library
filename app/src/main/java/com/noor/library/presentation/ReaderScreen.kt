@@ -26,6 +26,13 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import com.noor.library.audio.AudioCache
+import com.noor.library.audio.AudioController
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -117,6 +124,33 @@ fun ReaderScreen(
         }
     }
 
+    // ---- Quran audio (EveryAyah streaming + cache)
+    val isQuran = bookId == "quran"
+    val audio = remember { AudioController(context.applicationContext) }
+    DisposableEffect(Unit) {
+        if (isQuran) audio.connect()
+        onDispose { audio.release() }
+    }
+    val audioState by audio.state.collectAsState()
+    var showAudio by remember { mutableStateOf(false) }
+    var dlDone by remember { mutableIntStateOf(0) }
+    var dlTotal by remember { mutableIntStateOf(0) }
+    val audioScope = rememberCoroutineScope()
+    val playingHere = audioState.active && audioState.playingSurah == number
+    LaunchedEffect(audioState.playingAyah, audioState.playingSurah) {
+        val list = passages
+        if (isQuran && playingHere && list != null) {
+            val idx = list.indexOfFirst { it.passageNumber == audioState.playingAyah }
+            if (idx >= 0) listState.animateScrollToItem(idx)
+        }
+    }
+    fun startAudio() {
+        val list = passages ?: return
+        if (list.isEmpty()) return
+        val start = list.getOrNull(listState.firstVisibleItemIndex)?.passageNumber ?: 1
+        audio.playSurah(settings.reciter, number, sectionTitle, list.size, start)
+    }
+
     fun shareText(p: PassageEntity): String = buildString {
         append(p.arabicText)
         if (p.persianTranslation.isNotBlank()) append("\n\n").append(p.persianTranslation)
@@ -128,8 +162,46 @@ fun ReaderScreen(
             TopAppBar(
                 title = { Text(sectionDisplayTitle(bookId, type, number, sectionTitle), fontWeight = FontWeight.Bold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت") } },
-                actions = { IconButton(onClick = { showSheet = true }) { Icon(Icons.Filled.Tune, "تنظیمات مطالعه") } }
+                actions = {
+                    if (isQuran) IconButton(onClick = { showAudio = !showAudio }) { Icon(Icons.Filled.Headphones, "تلاوت") }
+                    IconButton(onClick = { showSheet = true }) { Icon(Icons.Filled.Tune, "تنظیمات مطالعه") }
+                }
             )
+        },
+        bottomBar = {
+            if (isQuran && showAudio) {
+                AudioBar(
+                    state = audioState,
+                    reciterFolder = settings.reciter,
+                    downloadDone = dlDone, downloadTotal = dlTotal,
+                    onTogglePlay = { if (playingHere) audio.togglePlay() else startAudio() },
+                    onNext = { audio.next() },
+                    onPrevious = { audio.previous() },
+                    onSpeed = { audio.setSpeed(it) },
+                    onReciter = { r ->
+                        appVm.update { it.setReciter(r) }
+                        if (playingHere) {
+                            val cur = audioState.playingAyah
+                            audio.playSurah(r, number, sectionTitle, passages?.size ?: 0, cur.coerceAtLeast(1))
+                        }
+                    },
+                    onDownload = {
+                        val count = passages?.size ?: 0
+                        if (count > 0) {
+                            dlDone = 0; dlTotal = count
+                            audioScope.launch {
+                                try {
+                                    AudioCache.downloadSurah(context.applicationContext, settings.reciter, number, count) { dlDone = it }
+                                } catch (e: Exception) {
+                                    dlTotal = 0
+                                    android.widget.Toast.makeText(context, "دانلود ناموفق بود؛ اینترنت را بررسی کنید", android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    },
+                    onClose = { audio.stop(); showAudio = false }
+                )
+            }
         }
     ) { pad ->
         val list = passages
@@ -149,6 +221,7 @@ fun ReaderScreen(
                 itemsIndexed(list, key = { _, p -> p.id }) { _, p ->
                     PassageCard(
                         p = p, settings = settings, noun = info.passageNoun,
+                        highlighted = playingHere && audioState.playingAyah == p.passageNumber,
                         bookmarked = p.passageNumber in bookmarked,
                         note = notes[p.passageNumber],
                         onBookmark = { vm.toggleBookmark(p) },
@@ -208,6 +281,7 @@ private fun PassageCard(
     p: PassageEntity,
     settings: Settings,
     noun: String,
+    highlighted: Boolean,
     bookmarked: Boolean,
     note: String?,
     onBookmark: () -> Unit,
@@ -217,6 +291,7 @@ private fun PassageCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
+        border = if (highlighted) androidx.compose.foundation.BorderStroke(2.dp, Gold) else null,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(Modifier.padding(14.dp)) {

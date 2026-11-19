@@ -29,6 +29,7 @@ data class Settings(
     val todayCount: Int = 0,
     val reminderEnabled: Boolean = false,
     val reminderHour: Int = 20,
+    val reciter: String = "Alafasy_128kbps",
 )
 
 data class LastPosition(val bookId: String, val sectionType: String, val sectionNumber: Int, val passage: Int)
@@ -50,6 +51,7 @@ class Prefs(private val context: Context) {
         val todayCount = intPreferencesKey("today_count")
         val reminderEnabled = booleanPreferencesKey("reminder_enabled")
         val reminderHour = intPreferencesKey("reminder_hour")
+        val reciter = stringPreferencesKey("reciter")
         val contentVersion = stringPreferencesKey("content_version")
         val lastBook = stringPreferencesKey("last_book")
         val lastType = stringPreferencesKey("last_type")
@@ -73,6 +75,7 @@ class Prefs(private val context: Context) {
             todayCount = if (p[K.todayDate] == today) (p[K.todayCount] ?: 0) else 0,
             reminderEnabled = p[K.reminderEnabled] ?: d.reminderEnabled,
             reminderHour = p[K.reminderHour] ?: d.reminderHour,
+            reciter = p[K.reciter] ?: d.reciter,
         )
     }
 
@@ -93,6 +96,7 @@ class Prefs(private val context: Context) {
     suspend fun setPersianFont(v: String) { ds.edit { it[K.persianFont] = v } }
     suspend fun setIgnoreHarakat(v: Boolean) { ds.edit { it[K.ignoreHarakat] = v } }
     suspend fun setDailyGoal(v: Int) { ds.edit { it[K.dailyGoal] = v } }
+    suspend fun setReciter(v: String) { ds.edit { it[K.reciter] = v } }
     suspend fun setReminder(enabled: Boolean, hour: Int) {
         ds.edit { it[K.reminderEnabled] = enabled; it[K.reminderHour] = hour }
     }

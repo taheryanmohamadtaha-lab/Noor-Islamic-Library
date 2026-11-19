@@ -77,5 +77,12 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
+    val media3 = "1.4.1"
+    implementation("androidx.media3:media3-exoplayer:$media3")
+    implementation("androidx.media3:media3-session:$media3")
+    implementation("androidx.media3:media3-datasource:$media3")
+    implementation("androidx.media3:media3-database:$media3")
+    implementation("com.google.guava:guava:33.3.1-android")
+
     testImplementation("junit:junit:4.13.2")
 }
